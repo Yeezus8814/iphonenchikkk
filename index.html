@@ -71,18 +71,31 @@
             opacity: 0;
             pointer-events: none;
         }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.4);
+            transition: background-color 0.3s;
+            cursor: pointer;
+        }
+
+        .dot.active {
+            background-color: white;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-purple-600 to-indigo-800 min-h-screen text-white">
 
     <!-- Main content container, centered and with a max-width for readability -->
-    <div id="app-content" class="w-full max-w-md mx-auto p-4 pt-8 sm:p-6 sm:pt-12 flex flex-col min-h-screen relative phone-container">
+    <div id="app-content" class="w-full max-w-md mx-auto p-4 pt-8 sm:p-6 sm:pt-12 flex flex-col h-screen relative phone-container">
         
-        <div class="flex-grow relative"> <!-- Wrapper for scenes -->
+        <div class="flex-grow relative flex flex-col"> <!-- Wrapper for scenes -->
 
             <div id="selection-container" class="scene">
                 <!-- Header -->
-                <header class="flex justify-between items-center mb-8 sm:mb-10">
+                <header class="flex justify-between items-center mb-8 sm:mb-10 flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                             </svg>
@@ -149,16 +162,33 @@
                     </div>
                     
                     <!-- Image Carousel -->
-                    <div id="image-gallery-container" class="flex-grow flex items-center justify-center opacity-0 transition-opacity duration-500">
-                       <div id="image-carousel" class="image-carousel flex w-full overflow-x-scroll snap-x snap-mandatory scroll-smooth cursor-grab active:cursor-grabbing">
-                           <!-- Images will be injected here by JS -->
-                       </div>
+                    <div id="image-gallery-container" class="flex-grow flex flex-col items-center justify-center opacity-0 transition-opacity duration-500 relative">
+                        <div class="w-full h-full relative flex items-center justify-center">
+                            <!-- Prev Button -->
+                            <button id="prev-slide" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/20 p-2 rounded-full backdrop-blur-sm z-10 text-white hover:bg-white/30 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            
+                            <div id="image-carousel" class="image-carousel flex w-full h-full overflow-x-scroll snap-x snap-mandatory scroll-smooth">
+                                <!-- Images will be injected here by JS -->
+                            </div>
+                    
+                            <!-- Next Button -->
+                            <button id="next-slide" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/20 p-2 rounded-full backdrop-blur-sm z-10 text-white hover:bg-white/30 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                            </button>
+                        </div>
+                    
+                        <!-- Carousel Dots -->
+                        <div id="carousel-dots" class="flex space-x-2 py-2">
+                            <!-- Dots will be injected here -->
+                        </div>
                     </div>
 
                 </main>
 
                 <!-- Footer -->
-                <footer class="mt-auto pt-6">
+                <footer class="mt-auto pt-6 flex-shrink-0">
                     <button id="next-button" class="w-full bg-white/90 text-purple-700 font-bold py-4 rounded-full text-base sm:text-lg tracking-wider shadow-lg hover:bg-white transition-all duration-200">
                         NEXT
                     </button>
@@ -211,7 +241,7 @@
                 memory: null
             };
 
-            const allPhoneImages = [
+             const allPhoneImages = [
                 'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/0a/ac/iphone-17-pro-max-512-gb-black-3.png.webp',
                 'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/08/5c/iphone-17-pro-max-256-gb-white-3.png.webp',
                 'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/b5/c7/iphone-17-pro-max-256-gb-orange-3.png.webp',
@@ -234,6 +264,10 @@
             const backButton = document.getElementById('back-button');
             const submitButton = document.getElementById('submit-button');
             const successContainer = document.getElementById('success-container');
+
+            const prevButton = document.getElementById('prev-slide');
+            const nextButtonCarousel = document.getElementById('next-slide');
+            const dotsContainer = document.getElementById('carousel-dots');
             
             let map = null; // To hold map instance
             let timerInterval = null; // To hold timer interval
@@ -285,10 +319,30 @@
             function populateCarousel() {
                 const images = allPhoneImages;
                 imageCarousel.innerHTML = images.map(src => `
-                    <div class="flex-shrink-0 w-full snap-center flex items-center justify-center">
-                        <img src="${src}" alt="Phone Image" class="max-h-[250px] object-contain" onerror="this.style.display='none'">
+                    <div class="flex-shrink-0 w-full h-full snap-center flex items-center justify-center p-4">
+                        <img src="${src}" alt="Phone Image" class="max-w-full max-h-full object-contain" onerror="this.style.display='none'">
                     </div>
                 `).join('');
+                
+                dotsContainer.innerHTML = images.map((_, index) => 
+                    `<div class="dot ${index === 0 ? 'active' : ''}" data-index="${index}"></div>`
+                ).join('');
+                updateCarouselUI();
+            }
+            
+            function updateCarouselUI() {
+                if (!imageCarousel.offsetWidth) return;
+                const slideWidth = imageCarousel.offsetWidth;
+                const currentIndex = Math.round(imageCarousel.scrollLeft / slideWidth);
+
+                // Update dots
+                dotsContainer.childNodes.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === currentIndex);
+                });
+
+                // Update buttons
+                prevButton.classList.toggle('hidden', currentIndex === 0);
+                nextButtonCarousel.classList.toggle('hidden', currentIndex >= allPhoneImages.length - 1);
             }
 
             function initializeMap() {
@@ -363,10 +417,7 @@
             setupDropdown('memory-select', 'memory-options', 'memory-selected-text', 'memory');
 
             nextButton.addEventListener('click', () => {
-                // You could add validation here to ensure all options are selected
                 if (!selections.model || !selections.color || !selections.memory) {
-                    // Using a custom, non-blocking modal/alert would be better than alert()
-                    // For now, this is a placeholder for validation feedback.
                     console.error("Please select all options before proceeding."); 
                     return;
                 }
@@ -381,7 +432,7 @@
             });
 
             submitButton.addEventListener('click', (e) => {
-                e.preventDefault(); // Prevent form submission
+                e.preventDefault();
                 contactFormContainer.classList.add('scene-hidden');
                 successContainer.classList.remove('scene-hidden');
                 const twoHours = 60 * 60 * 2;
@@ -396,35 +447,35 @@
             });
 
 
-            // Carousel drag functionality
-            let isDown = false;
-            let startX;
-            let scrollLeft;
+            // Carousel navigation
+            prevButton.addEventListener('click', () => {
+                imageCarousel.scrollBy({ left: -imageCarousel.offsetWidth, behavior: 'smooth' });
+            });
+            nextButtonCarousel.addEventListener('click', () => {
+                imageCarousel.scrollBy({ left: imageCarousel.offsetWidth, behavior: 'smooth' });
+            });
+            dotsContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('dot')) {
+                    const index = parseInt(e.target.dataset.index);
+                    imageCarousel.scrollTo({
+                        left: index * imageCarousel.offsetWidth,
+                        behavior: 'smooth'
+                    });
+                }
+            });
 
-            imageCarousel.addEventListener('mousedown', (e) => {
-                isDown = true;
-                imageCarousel.classList.add('active:cursor-grabbing');
-                startX = e.pageX - imageCarousel.offsetLeft;
-                scrollLeft = imageCarousel.scrollLeft;
+            let scrollTimeout;
+            imageCarousel.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    updateCarouselUI();
+                }, 60); 
             });
-            imageCarousel.addEventListener('mouseleave', () => { isDown = false; imageCarousel.classList.remove('active:cursor-grabbing'); });
-            imageCarousel.addEventListener('mouseup', () => { isDown = false; imageCarousel.classList.remove('active:cursor-grabbing'); });
-            imageCarousel.addEventListener('mousemove', (e) => {
-                if (!isDown) return;
-                e.preventDefault();
-                const x = e.pageX - imageCarousel.offsetLeft;
-                const walk = (x - startX) * 2;
-                imageCarousel.scrollLeft = scrollLeft - walk;
-            });
-            imageCarousel.addEventListener('touchstart', (e) => { isDown = true; startX = e.touches[0].pageX - imageCarousel.offsetLeft; scrollLeft = imageCarousel.scrollLeft; });
-            imageCarousel.addEventListener('touchend', () => { isDown = false; });
-            imageCarousel.addEventListener('touchmove', (e) => {
-                if (!isDown) return;
-                const x = e.touches[0].pageX - imageCarousel.offsetLeft;
-                const walk = (x - startX) * 2;
-                imageCarousel.scrollLeft = scrollLeft - walk;
-            });
+            
+            // Update carousel on resize
+            new ResizeObserver(updateCarouselUI).observe(imageCarousel);
         });
     </script>
 </body>
 </html>
+
