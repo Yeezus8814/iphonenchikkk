@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Store</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- LeafletJS for the map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+    <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.6.2/dist/dotlottie-wc.js" type="module"></script> 
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .phone-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('https://www.transparenttextures.com/patterns/az-subtle.png');
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* Custom scrollbar for the image carousel */
+        .image-carousel::-webkit-scrollbar {
+            display: none;
+        }
+        .image-carousel {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        .custom-select-option, .color-option {
+            transition: background-color 0.2s;
+        }
+        .custom-select-option:hover, .color-option:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Set a height for the map container */
+        #map {
+            height: 250px;
+            border-radius: 1rem;
+            z-index: 10;
+        }
+
+        .scene {
+            transition: opacity 0.4s ease-in-out;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .scene-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-600 to-indigo-800 min-h-screen text-white">
+
+    <!-- Main content container, centered and with a max-width for readability -->
+    <div id="app-content" class="w-full max-w-md mx-auto p-4 pt-8 sm:p-6 sm:pt-12 flex flex-col min-h-screen relative phone-container">
+        
+        <div class="flex-grow relative"> <!-- Wrapper for scenes -->
+
+            <div id="selection-container" class="scene">
+                <!-- Header -->
+                <header class="flex justify-between items-center mb-8 sm:mb-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <h1 class="text-lg sm:text-xl font-bold">PHONE MODEL</h1>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                </header>
+
+                <main class="flex-grow flex flex-col space-y-4 sm:space-y-6">
+                    <!-- Phone Model Select -->
+                    <div class="relative">
+                        <div id="model-select" class="bg-white/30 backdrop-blur-sm rounded-full p-3 flex justify-between items-center cursor-pointer">
+                            <span id="model-selected-text" class="pl-2 text-sm sm:text-base">PHONE MODEL</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div id="model-options" class="hidden absolute w-full mt-2 bg-white/30 backdrop-blur-sm rounded-2xl p-2 z-20">
+                             <div class="grid grid-cols-2 gap-2 text-center text-sm sm:text-base">
+                                <div class="custom-select-option p-2 rounded-lg cursor-pointer" data-value="16">16</div>
+                                <div class="custom-select-option p-2 rounded-lg cursor-pointer" data-value="17 Pro">17 Pro</div>
+                                <div class="custom-select-option p-2 rounded-lg cursor-pointer" data-value="16 Pro Max">16 Pro Max</div>
+                                <div class="custom-select-option p-2 rounded-lg cursor-pointer" data-value="17 Pro Max">17 Pro Max</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Color Select -->
+                    <div class="relative">
+                        <div id="color-select" class="bg-white/30 backdrop-blur-sm rounded-full p-3 flex justify-between items-center cursor-pointer">
+                            <span id="color-selected-text" class="pl-2 text-sm sm:text-base">COLOR</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div id="color-options" class="hidden absolute w-full mt-2 bg-white/30 backdrop-blur-sm rounded-2xl p-4 z-20">
+                            <div class="flex justify-around items-center">
+                                <div class="color-option w-8 h-8 rounded-full bg-pink-200 cursor-pointer border-2 border-transparent" data-value="Rose Gold" data-color="#FBCFE8"></div>
+                                <div class="color-option w-8 h-8 rounded-full bg-gray-800 cursor-pointer border-2 border-transparent" data-value="Space Black" data-color="#1F2937"></div>
+                                <div class="color-option w-8 h-8 rounded-full bg-yellow-300 cursor-pointer border-2 border-transparent" data-value="Gold" data-color="#FDE047"></div>
+                                <div class="color-option w-8 h-8 rounded-full bg-indigo-400 cursor-pointer border-2 border-transparent" data-value="Ultramarine" data-color="#818CF8"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                     <!-- Memory Capacity Select -->
+                    <div class="relative">
+                        <div id="memory-select" class="bg-white/30 backdrop-blur-sm rounded-full p-3 flex justify-between items-center cursor-pointer">
+                            <span id="memory-selected-text" class="pl-2 text-sm sm:text-base">MEMORY CAPACITY</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div id="memory-options" class="hidden absolute w-full mt-2 bg-white/30 backdrop-blur-sm rounded-2xl p-2 z-20">
+                             <div class="grid grid-cols-2 gap-2 text-center text-sm sm:text-base">
+                                <div class="custom-select-option p-2 rounded-lg cursor-pointer" data-value="128GB">128GB</div>
+                                <div class="custom-select-option p-2 rounded-lg cursor-pointer" data-value="256GB">256GB</div>
+                                <div class="custom-select-option p-2 rounded-lg cursor-pointer" data-value="512GB">512GB</div>
+                                <div class="custom-select-option p-2 rounded-lg cursor-pointer" data-value="1TB">1TB</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Image Carousel -->
+                    <div id="image-gallery-container" class="flex-grow flex items-center justify-center opacity-0 transition-opacity duration-500">
+                       <div id="image-carousel" class="image-carousel flex w-full overflow-x-scroll snap-x snap-mandatory scroll-smooth cursor-grab active:cursor-grabbing">
+                           <!-- Images will be injected here by JS -->
+                       </div>
+                    </div>
+
+                </main>
+
+                <!-- Footer -->
+                <footer class="mt-auto pt-6">
+                    <button id="next-button" class="w-full bg-white/90 text-purple-700 font-bold py-4 rounded-full text-base sm:text-lg tracking-wider shadow-lg hover:bg-white transition-all duration-200">
+                        NEXT
+                    </button>
+                </footer>
+            </div>
+
+            <!-- Contact Form Container -->
+            <div id="contact-form-container" class="scene scene-hidden">
+                 <header class="flex items-center mb-6 sm:mb-8">
+                    <svg id="back-button" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 cursor-pointer flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <h1 class="text-xl sm:text-2xl font-bold text-center w-full leading-tight">ENTER YOUR CONTACT INFORMATION</h1>
+                </header>
+                <div class="bg-gray-900/40 backdrop-blur-sm rounded-2xl p-4 sm:p-6 flex-grow flex flex-col space-y-4 sm:space-y-6">
+                    <div>
+                        <label for="name" class="block mb-2 font-semibold text-sm sm:text-base">NAME</label>
+                        <input type="text" id="name" class="w-full bg-white/90 text-gray-800 rounded-lg p-3 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-purple-400">
+                    </div>
+                    <div>
+                        <label for="address" class="block mb-2 font-semibold text-sm sm:text-base">ADDRESS</label>
+                        <div id="map" class="w-full cursor-pointer"></div>
+                    </div>
+                     <button id="submit-button" class="w-full bg-white/90 text-purple-700 font-bold py-4 rounded-full text-base sm:text-lg tracking-wider shadow-lg hover:bg-white transition-all duration-200 mt-auto">
+                        SUBMIT ORDER
+                    </button>
+                </div>
+            </div>
+
+            <!-- Success Animation Container -->
+            <div id="success-container" class="scene scene-hidden items-center justify-center cursor-pointer">
+                <div class="text-center flex flex-col items-center">
+                    <div class="w-full max-w-[300px]">
+                        <dotlottie-wc src="https://lottie.host/5af09241-2364-4b65-9b34-16f58744ce16/XXS04AQAyo.lottie" style="width: 100%; height: auto;" speed="1" autoplay loop></dotlottie-wc>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-bold mb-4">Your iPhone is on the way!</h2>
+                    <p id="timer" class="text-base sm:text-lg mb-8 font-mono"></p>
+                </div>
+            </div>
+
+
+        </div> <!-- End of scene wrapper -->
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const selections = {
+                model: null,
+                color: null,
+                memory: null
+            };
+
+            const allPhoneImages = [
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/0a/ac/iphone-17-pro-max-512-gb-black-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/08/5c/iphone-17-pro-max-256-gb-white-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/b5/c7/iphone-17-pro-max-256-gb-orange-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/1e/86/iphone-17-pro-max-256-gb-black-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/47/78/iphone-17-pro-max-512-gb-white-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/a0/99/iphone-17-pro-max-512-gb-orange-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/00/d6/iphone-17-pro-max-1-tb-black-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/a5/c2/iphone-17-pro-max-1-tb-white-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/de/30/iphone-17-pro-max-1-tb-orange-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/a4/10/iphone-17-pro-max-2-tb-black-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/11/56/iphone-17-pro-max-2-tb-white-3.png.webp',
+                'https://yabloki.ua/media/cache/sylius_shop_product_thumbnail/2c/60/iphone-17-pro-max-2-tb-orange-3.png.webp'
+            ];
+            
+            const imageGalleryContainer = document.getElementById('image-gallery-container');
+            const imageCarousel = document.getElementById('image-carousel');
+            const selectionContainer = document.getElementById('selection-container');
+            const contactFormContainer = document.getElementById('contact-form-container');
+            const nextButton = document.getElementById('next-button');
+            const backButton = document.getElementById('back-button');
+            const submitButton = document.getElementById('submit-button');
+            const successContainer = document.getElementById('success-container');
+            
+            let map = null; // To hold map instance
+            let timerInterval = null; // To hold timer interval
+
+            function setupDropdown(selectId, optionsId, selectedTextId, selectionKey) {
+                const select = document.getElementById(selectId);
+                const options = document.getElementById(optionsId);
+                const selectedText = document.getElementById(selectedTextId);
+
+                select.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isHidden = options.classList.contains('hidden');
+                     // Hide all dropdowns first
+                    document.querySelectorAll('.absolute.z-20').forEach(el => el.classList.add('hidden'));
+                    // Toggle current dropdown
+                    if(isHidden) options.classList.remove('hidden');
+                });
+
+                options.addEventListener('click', (e) => {
+                    if (e.target.dataset.value) {
+                        const value = e.target.dataset.value;
+                        selectedText.textContent = value.toUpperCase();
+                        selections[selectionKey] = value;
+                        options.classList.add('hidden');
+                        
+                        if (selectionKey === 'color') {
+                             options.querySelectorAll('.color-option').forEach(el => el.classList.remove('ring-2', 'ring-white'));
+                             e.target.classList.add('ring-2', 'ring-white');
+                        }
+                        checkAllSelections();
+                    }
+                });
+            }
+
+            document.addEventListener('click', () => {
+                 document.querySelectorAll('.absolute.z-20').forEach(el => el.classList.add('hidden'));
+            });
+
+
+            function checkAllSelections() {
+                if (selections.model && selections.color && selections.memory) {
+                    imageGalleryContainer.classList.remove('opacity-0');
+                    populateCarousel();
+                } else {
+                    imageGalleryContainer.classList.add('opacity-0');
+                }
+            }
+
+            function populateCarousel() {
+                const images = allPhoneImages;
+                imageCarousel.innerHTML = images.map(src => `
+                    <div class="flex-shrink-0 w-full snap-center flex items-center justify-center">
+                        <img src="${src}" alt="Phone Image" class="max-h-[250px] object-contain" onerror="this.style.display='none'">
+                    </div>
+                `).join('');
+            }
+
+            function initializeMap() {
+                if(!map) { // Only initialize map once
+                    map = L.map('map').setView([51.505, -0.09], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    }).addTo(map);
+
+                    let marker = L.marker([51.505, -0.09]).addTo(map);
+
+                    map.on('click', function(e) {
+                        marker.setLatLng(e.latlng);
+                    });
+                }
+                // When showing the form, invalidate map size to ensure it renders correctly
+                setTimeout(() => map.invalidateSize(), 10);
+            }
+            
+            function startTimer(duration, display) {
+                let timer = duration, hours, minutes, seconds;
+                
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
+
+                timerInterval = setInterval(function () {
+                    hours = parseInt(timer / 3600, 10);
+                    minutes = parseInt((timer % 3600) / 60, 10);
+                    seconds = parseInt(timer % 60, 10);
+
+                    hours = hours < 10 ? "0" + hours : hours;
+                    minutes = minutes < 10 ? "0" + minutes : minutes;
+                    seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                    display.textContent = "Arrives in: " + hours + ":" + minutes + ":" + seconds;
+
+                    if (--timer < 0) {
+                        clearInterval(timerInterval);
+                        display.textContent = "Your phone has arrived!";
+                    }
+                }, 1000);
+            }
+
+            function resetState() {
+                // Reset selections
+                selections.model = null;
+                selections.color = null;
+                selections.memory = null;
+
+                // Reset dropdown text
+                document.getElementById('model-selected-text').textContent = 'PHONE MODEL';
+                document.getElementById('color-selected-text').textContent = 'COLOR';
+                document.getElementById('memory-selected-text').textContent = 'MEMORY CAPACITY';
+
+                // Reset color selection UI
+                document.querySelectorAll('.color-option').forEach(el => el.classList.remove('ring-2', 'ring-white'));
+                
+                // Hide image gallery
+                imageGalleryContainer.classList.add('opacity-0');
+
+                // Clear name field
+                document.getElementById('name').value = '';
+
+                // Stop timer
+                if(timerInterval) clearInterval(timerInterval);
+            }
+
+            setupDropdown('model-select', 'model-options', 'model-selected-text', 'model');
+            setupDropdown('color-select', 'color-options', 'color-selected-text', 'color');
+            setupDropdown('memory-select', 'memory-options', 'memory-selected-text', 'memory');
+
+            nextButton.addEventListener('click', () => {
+                // You could add validation here to ensure all options are selected
+                if (!selections.model || !selections.color || !selections.memory) {
+                    // Using a custom, non-blocking modal/alert would be better than alert()
+                    // For now, this is a placeholder for validation feedback.
+                    console.error("Please select all options before proceeding."); 
+                    return;
+                }
+                selectionContainer.classList.add('scene-hidden');
+                contactFormContainer.classList.remove('scene-hidden');
+                initializeMap();
+            });
+
+            backButton.addEventListener('click', () => {
+                contactFormContainer.classList.add('scene-hidden');
+                selectionContainer.classList.remove('scene-hidden');
+            });
+
+            submitButton.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent form submission
+                contactFormContainer.classList.add('scene-hidden');
+                successContainer.classList.remove('scene-hidden');
+                const twoHours = 60 * 60 * 2;
+                const display = document.querySelector('#timer');
+                startTimer(twoHours, display);
+            });
+
+            successContainer.addEventListener('click', () => {
+                successContainer.classList.add('scene-hidden');
+                selectionContainer.classList.remove('scene-hidden');
+                resetState();
+            });
+
+
+            // Carousel drag functionality
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            imageCarousel.addEventListener('mousedown', (e) => {
+                isDown = true;
+                imageCarousel.classList.add('active:cursor-grabbing');
+                startX = e.pageX - imageCarousel.offsetLeft;
+                scrollLeft = imageCarousel.scrollLeft;
+            });
+            imageCarousel.addEventListener('mouseleave', () => { isDown = false; imageCarousel.classList.remove('active:cursor-grabbing'); });
+            imageCarousel.addEventListener('mouseup', () => { isDown = false; imageCarousel.classList.remove('active:cursor-grabbing'); });
+            imageCarousel.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - imageCarousel.offsetLeft;
+                const walk = (x - startX) * 2;
+                imageCarousel.scrollLeft = scrollLeft - walk;
+            });
+            imageCarousel.addEventListener('touchstart', (e) => { isDown = true; startX = e.touches[0].pageX - imageCarousel.offsetLeft; scrollLeft = imageCarousel.scrollLeft; });
+            imageCarousel.addEventListener('touchend', () => { isDown = false; });
+            imageCarousel.addEventListener('touchmove', (e) => {
+                if (!isDown) return;
+                const x = e.touches[0].pageX - imageCarousel.offsetLeft;
+                const walk = (x - startX) * 2;
+                imageCarousel.scrollLeft = scrollLeft - walk;
+            });
+        });
+    </script>
+</body>
+</html>
